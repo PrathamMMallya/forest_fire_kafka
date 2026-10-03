@@ -1,4 +1,4 @@
-# 🔥 Wildfire Risk — Real-Time Kafka Streaming Pipeline + MLOps Backend
+# 🔥 Wildfire Risk — Real-Time Kafka Streaming Pipeline + FastAPI Backend
 
 An end-to-end wildfire risk system with two integrated parts:
 
@@ -6,7 +6,7 @@ An end-to-end wildfire risk system with two integrated parts:
    Streams (filter + window + feature engineering) → ML Fire Detection → Fire Prediction →
    Alert Topic → Elasticsearch → **3D satellite dashboard on http://localhost:9991** /
    Emergency Alerts → Performance Evaluation.
-2. **Batch MLOps backend** — training, FastAPI inference, drift monitoring, Prefect
+2. **Batch backend** — training, FastAPI inference, drift monitoring, Prefect
    retraining, DVC versioning (execution guide in *Part B* below).
 
 ---
@@ -245,7 +245,7 @@ pytest tests/test_streams.py -v     # 13 tests: validation, sentinel handling,
 
 ---
 
-# Part B — Batch MLOps Backend (Full Execution Guide)
+# Part B — Batch FastAPI Backend (Full Execution Guide)
 
 > ⚠️ This part documents **everything required to make the batch system work**, even if some
 > steps are not ideal for production. **Follow the order exactly. Skipping steps will break
