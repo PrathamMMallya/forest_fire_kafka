@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# MLflow
+mlruns/
+
+# Outputs
+outputs/
+Output/
+
+# Monitoring runtime
+monitoring/current/*
+monitoring/drift/*.json
+monitoring/drift/*.html
+
+
+# Data & artifacts
+Data/
+artifacts/
+dvcstore/
+mlruns/
+
+# Prefect runtime
+.prefect/
+.prefect-flow-runs/
+
+# Python
+__pycache__/
+*.pyc
+
+# Env
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend
+/frontend/react-app/node_modules/
+/frontend/react-app/.vite/
+/frontend/react-app/dist/
+/frontend/react-app/node_modules/.bin/
+
+
+# Streaming pipeline runtime
+logs/
+nohup.out
+*.log
+~$*
+.pytest_cache/
+.claude/

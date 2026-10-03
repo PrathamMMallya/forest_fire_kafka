@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+Data/
+src/
+mlruns/
+dvc/
+.dvc/
+.git/
+.gitignore
+train.py
+requirements.txt

@@ -1,0 +1,55 @@
+:root{
+  --bg:#0b1220;
+  --panel:#07121a;
+  --card:#081421;
+  --accent:#ff7a18;
+  --muted:#94a3b8;
+  --success:#10b981;
+  --danger:#ef4444;
+  color-scheme: dark;
+}
+html,body,#root{height:100%;}
+body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,var(--bg),#061021);color:#e6eef7}
+.container{max-width:1200px;margin:18px auto;padding:18px;display:flex;gap:18px}
+
+/* Sidebar */
+.sidebar{width:220px;display:flex;flex-direction:column;gap:12px;padding:18px;min-height:80vh;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.logo{font-size:22px}
+.title{font-weight:700}
+.nav{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.nav-item{padding:10px;border-radius:8px;color:var(--muted);cursor:pointer}
+.nav-item.active{background:rgba(255,122,24,0.12);color:var(--accent);font-weight:600}
+.sidebar-footer{margin-top:auto}
+
+/* Main area */
+.main{flex:1}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.header h2{margin:0}
+
+.banner{display:flex;justify-content:space-between;align-items:center;padding:18px;border-radius:12px;background:linear-gradient(90deg,rgba(255,122,24,0.06),transparent)}
+
+.card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px;padding:18px;margin-bottom:12px;transition:transform .12s ease,box-shadow .12s ease}
+.card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+.card-accent{background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);border-radius:12px;padding:14px}
+
+.model-selected{border:1px solid rgba(96,165,250,0.06);padding:14px}
+.drift-bar{height:10px;background:rgba(255,255,255,0.04);border-radius:8px;overflow:hidden}
+.drift-bar > div{height:10px;background:linear-gradient(90deg,#f97316,#ef4444)}
+
+.grid.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+.metric{padding:12px;border-radius:10px}
+.metric-title{font-size:12px;color:var(--muted)}
+.metric-value{font-size:22px;font-weight:700;margin-top:6px}
+
+.row{display:flex;gap:12px}
+.col{flex:1}
+.small{font-size:12px;color:var(--muted)}
+.button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#001219;cursor:pointer}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left}
+.badge{padding:4px 8px;border-radius:8px;background:rgba(255,255,255,0.04);font-size:12px}
+.footer{margin-top:16px;color:var(--muted);font-size:13px}
+
+/* utilities */
+.small-muted{font-size:12px;color:var(--muted)}

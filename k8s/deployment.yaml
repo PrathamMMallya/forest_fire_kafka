@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wildfire-inference
+  namespace: wildfire
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wildfire-inference
+  template:
+    metadata:
+      labels:
+        app: wildfire-inference
+    spec:
+      containers:
+        - name: wildfire-inference
+          image: wildfire-inference:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"

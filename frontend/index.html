@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wildfire Risk — Frontend</title>
+    <link rel="stylesheet" href="./static/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Wildfire Risk Predictor 🔥</h1>
+
+      <div id="status" class="status">Backend: <span id="backend-status">unknown</span></div>
+
+      <div class="config">
+        <label>API URL: <input id="api-url" value="http://localhost:8000" /></label>
+        <button id="check">Check Health</button>
+      </div>
+
+      <form id="features-form" class="form"></form>
+
+      <div class="controls">
+        <button id="fill-sample" type="button">Fill sample</button>
+        <button id="predict" type="button">Predict</button>
+      </div>
+
+      <div id="result" class="result"></div>
+
+      <footer>
+        <small>Note: This frontend posts to <code>/predict</code> and expects a response with <code>wildfire_probability</code> and <code>wildfire_prediction</code>.</small>
+      </footer>
+    </div>
+
+    <script src="./static/app.js"></script>
+  </body>
+</html>

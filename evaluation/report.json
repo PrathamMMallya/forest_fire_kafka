@@ -1,0 +1,46 @@
+{
+  "run_at": "2026-10-03T16:55:49.562790+00:00",
+  "config": {
+    "events_sent": 5000,
+    "target_eps": 300.0
+  },
+  "latency_ms": {
+    "p50": 142.6,
+    "p95": 219.5,
+    "p99": 240.9,
+    "mean": 142.9,
+    "n": 5000
+  },
+  "throughput": {
+    "predictions_received": 5000,
+    "wall_seconds": 103.78,
+    "events_per_second_observed": 48.2,
+    "time_to_first_prediction_s": 3.51
+  },
+  "detection_quality": {
+    "n": 5000,
+    "positives": 263,
+    "tp": 245,
+    "fp": 809,
+    "fn": 18,
+    "tn": 3928,
+    "precision": 0.2324,
+    "recall": 0.9316,
+    "f1": 0.3721,
+    "roc_auc": 0.9426,
+    "pr_auc": 0.483,
+    "threshold": 0.5
+  },
+  "alerts": {
+    "tier_counts": {
+      "WATCH": 788,
+      "WARNING": 175,
+      "EMERGENCY": 52,
+      "NONE": 3985
+    },
+    "alerts_on_topic": 20
+  },
+  "data_quality": {
+    "late_events": 0
+  }
+}

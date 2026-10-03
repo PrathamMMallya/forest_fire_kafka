@@ -1,0 +1,73 @@
+# CD workflow: build & push images to GHCR, then (optionally) deploy to Kubernetes
+# Triggers on pushes to main. You can run manually using workflow_dispatch.
+name: CD
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+# Ensure this workflow can push Packages
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    name: Build images & deploy
+    runs-on: ubuntu-latest
+    env:
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-backend:latest
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend/react-app
+          file: ./frontend/react-app/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-frontend:latest
+
+      - name: Install kubectl
+        if: ${{ env.KUBE_CONFIG != '' }}
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Apply k8s manifests and update image
+        if: ${{ env.KUBE_CONFIG != '' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+          BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-backend:${{ github.sha }}
+        run: |
+          echo "${{ env.KUBE_CONFIG }}" > $KUBECONFIG
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/service.yaml
+          # Update the deployment image to the newly pushed image and wait for rollout
+          kubectl set image deployment/wildfire-inference wildfire-inference=$BACKEND_IMAGE -n wildfire
+          kubectl rollout status deployment/wildfire-inference -n wildfire
+
+      - name: Skipping k8s deploy
+        if: ${{ env.KUBE_CONFIG == '' }}
+        run: echo "No KUBE_CONFIG secret found — skipping Kubernetes deploy. To enable, add a KUBE_CONFIG secret containing your kubeconfig (plain text)."

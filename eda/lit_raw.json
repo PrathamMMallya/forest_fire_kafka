@@ -1,0 +1,165 @@
+{
+  "data mining approach predict forest fires meteorological data": [],
+  "review machine learning applications wildfire science": [],
+  "forest fire detection deep learning real-time": [],
+  "convolutional LSTM precipitation nowcasting": [],
+  "next day wildfire spread machine learning dataset": [],
+  "wildfire spread prediction deep learning": [
+    {
+      "title": "CNN-BiLSTM: A Novel Deep Learning Model for Near-Real-Time Daily Wildfire Spread Prediction",
+      "year": 2024,
+      "venue": "Remote Sensing",
+      "citations": 84,
+      "authors": [
+        "Mohammad Marjani",
+        "M. Mahdianpari",
+        "F. Mohammadimanesh"
+      ],
+      "doi": "10.3390/rs16081467"
+    },
+    {
+      "title": "Machine Learning and Deep Learning for Wildfire Spread Prediction: A Review",
+      "year": 2024,
+      "venue": "Fire",
+      "citations": 76,
+      "authors": [
+        "Henintsoa S. Andrianarivony",
+        "M. Akhloufi"
+      ],
+      "doi": "10.3390/fire7120482"
+    },
+    {
+      "title": "An Enhanced Wildfire Spread Prediction Using Multimodal Satellite Imagery and Deep Learning Models",
+      "year": 2025,
+      "venue": "Remote Sensing Applications Society and Environment",
+      "citations": 13,
+      "authors": [
+        "R. Zakari",
+        "O. Malik",
+        "Ong Wee-Hong"
+      ],
+      "doi": "10.1016/j.rsase.2025.101632"
+    },
+    {
+      "title": "Assessment of deep learning models integrated with weather and environmental variables for wildfire spread prediction and a case study of the 2023 Maui fires",
+      "year": 2025,
+      "venue": "Natural Hazards",
+      "citations": 3,
+      "authors": [
+        "Jiyeon Kim",
+        "Yingjie Hu",
+        "N. Elhami-Khorasani"
+      ],
+      "doi": "10.1007/s11069-025-07807-x"
+    },
+    {
+      "title": "ABNextFire: A Multisource Deep Learning Based Dataset for Wildfire Spread Prediction",
+      "year": 2026,
+      "venue": "IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing",
+      "citations": 3,
+      "authors": [
+        "Mohammad Marjani",
+        "F. Mohammadimanesh",
+        "M. Mahdianpari"
+      ],
+      "doi": "10.1109/JSTARS.2026.3677699"
+    },
+    {
+      "title": "Modular Deep Learning Mechanisms for Auditable Next-Day Wildfire Spread Prediction",
+      "year": 2026,
+      "venue": "",
+      "citations": 0,
+      "authors": [
+        "Miguel Esparza",
+        "Aydin Ayanzadeh",
+        "Ahmad Mousavi"
+      ],
+      "doi": null
+    }
+  ],
+  "forest fire detection techniques review sensors": [],
+  "predictive modeling wildfire new dataset machine learning": [],
+  "Apache Kafka distributed messaging log processing": [],
+  "Kafka Streams real-time stream processing": [],
+  "forest fire IoT detection wireless sensor networks": [],
+  "wildfire susceptibility mapping machine learning": [],
+  "gridded surface meteorological data ecological applications": [],
+  "FireCast deep learning wildfire spread prediction": [],
+  "smoke detection video deep learning": [],
+  "concept drift data stream mining survey": [],
+  "fire danger rating system energy release component": [],
+  "real-time forest fire detection streaming data": [
+    {
+      "title": "Onboard Hardware\u2013Software Complex for Detection, Analysis of Fire Outbreaks, and Data Transmission During Territory Monitoring by Unmanned Aerial Vehicles",
+      "year": 2026,
+      "venue": "International Conference on Industrial Engineering, Applications and Manufacturing",
+      "citations": 0,
+      "authors": [
+        "L. A. Rybak",
+        "Pavel A. Podlesny",
+        "V. V. Cherkasov"
+      ],
+      "doi": "10.1109/ICIEAM69213.2026.11549580"
+    },
+    {
+      "title": "IoT Based Anti-Poaching System for Trees and Wildlife Monitoring System in Remote Area",
+      "year": 2025,
+      "venue": "Journal of Information Systems Engineering & Management",
+      "citations": 1,
+      "authors": [
+        "Shital A. Birari",
+        "Prof. Dr. Nilesh R. Wankhade",
+        "S. Bagal"
+      ],
+      "doi": "10.52783/jisem.v10i43s.8538"
+    },
+    {
+      "title": "Edge Computing-Based Real-Time Forest Fire Detection Using UAV Thermal and Color Images",
+      "year": 2025,
+      "venue": "IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing",
+      "citations": 19,
+      "authors": [
+        "Lingxia Mu",
+        "Yichi Yang",
+        "Ban Wang"
+      ],
+      "doi": "10.1109/JSTARS.2025.3528652"
+    },
+    {
+      "title": "Improved Lightweight YOLOv11 Algorithm for Real-Time Forest Fire Detection",
+      "year": 2025,
+      "venue": "Electronics",
+      "citations": 14,
+      "authors": [
+        "Ye Tao",
+        "Bangyu Li",
+        "Peiru Li"
+      ],
+      "doi": "10.3390/electronics14081508"
+    },
+    {
+      "title": "DPMNet: A Remote Sensing Forest Fire Real-Time Detection Network Driven by Dual Pathways and Multidimensional Interactions of Features",
+      "year": 2025,
+      "venue": "IEEE transactions on circuits and systems for video technology (Print)",
+      "citations": 26,
+      "authors": [
+        "Guanbo Wang",
+        "Hai-Yan Li",
+        "Victor S. Sheng"
+      ],
+      "doi": "10.1109/TCSVT.2024.3462432"
+    },
+    {
+      "title": "Hybrid Integration of MAVlink Telemetry and Sensor Data Via REST API for Real-Time UAV-Based Fire Detection Monitoring",
+      "year": 2025,
+      "venue": "International Conference on Information Technology, Computer, and Electrical Engineering",
+      "citations": 0,
+      "authors": [
+        "Finodya Yahdun",
+        "D. Eridani",
+        "Rinta Kridalukmana"
+      ],
+      "doi": "10.1109/ICITACEE66165.2025.11232606"
+    }
+  ]
+}

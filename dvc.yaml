@@ -1,0 +1,20 @@
+stages:
+  preprocess_tabular:
+    cmd: python -m src.data_prep
+    deps:
+      - Data/Wildfire_Dataset.csv
+      - src/data_prep.py
+      - src/config.py
+    outs:
+      - Data/processed
+
+  train:
+    cmd: python train.py
+    deps:
+      - Data/processed
+      - train.py
+      - src/trainer.py
+      - src/data_prep_seq.py
+      - src/config.py
+    outs:
+      - artifacts

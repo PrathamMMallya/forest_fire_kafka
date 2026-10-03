@@ -1,0 +1,53 @@
+schema: '2.0'
+stages:
+  preprocess_tabular:
+    cmd: python -m src.data_prep
+    deps:
+    - path: Data/Wildfire_Dataset.csv
+      hash: md5
+      md5: afa0f13225cfbbc3089f683801dea54c
+      size: 1132250555
+    - path: src/config.py
+      hash: md5
+      md5: 0e064e3fc5fedb4eb1c66490c31f9b96
+      size: 1261
+    - path: src/data_prep.py
+      hash: md5
+      md5: 5d0f302be6936b3e304c8af3bca763cf
+      size: 6317
+    outs:
+    - path: Data/processed
+      hash: md5
+      md5: b93d466944cce66cb14ff21ff7df3ea1.dir
+      size: 190151838
+      nfiles: 197
+  train:
+    cmd: python train.py
+    deps:
+    - path: Data/processed
+      hash: md5
+      md5: b93d466944cce66cb14ff21ff7df3ea1.dir
+      size: 190151838
+      nfiles: 197
+    - path: src/config.py
+      hash: md5
+      md5: 0e064e3fc5fedb4eb1c66490c31f9b96
+      size: 1261
+    - path: src/data_prep_seq.py
+      hash: md5
+      md5: 50bdd6386decb1ae306e2af5a8c7e9fe
+      size: 4672
+    - path: src/trainer.py
+      hash: md5
+      md5: 672b405c13485f5615431eaaf23f16fe
+      size: 11251
+    - path: train.py
+      hash: md5
+      md5: 60e23d09ad486b2783bedf461f1a912d
+      size: 1830
+    outs:
+    - path: artifacts
+      hash: md5
+      md5: 43082d611eedfd2a1299097ebd43aafc.dir
+      size: 11396148
+      nfiles: 9

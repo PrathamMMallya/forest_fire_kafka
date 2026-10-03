@@ -1,0 +1,18 @@
+# requirements.txt
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.5
+imbalanced-learn>=0.12   # <-- ADD THIS LINE
+mlflow>=2.15
+joblib>=1.3
+tqdm>=4.66
+xgboost>=2.0
+torch>=2.0
+torchvision>=0.15
+einops>=0.7
+fastapi
+uvicorn
+pydantic
+scikit-learn
+
+

@@ -1,0 +1,12 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+RUN pip install --no-cache-dir \
+    confluent-kafka==2.6.1 scikit-learn==1.5.2 joblib==1.4.2 \
+    numpy pandas fastapi "uvicorn[standard]" requests tqdm
+
+COPY streaming/ ./streaming/
+COPY artifacts/ ./artifacts/
+COPY eda/data/ ./eda/data/
+
+CMD ["python", "-m", "streaming.streams_app"]
