@@ -13,8 +13,10 @@ def ensure_topics(settings: Settings | None = None) -> None:
     spec = [
         # (name, partitions, replication, config)
         (s.topic_raw, 6, 3, {"retention.ms": str(7 * 24 * 3600 * 1000)}),
-        (s.topic_features, 3, 3, {"cleanup.policy": "compact",
-                                  "min.cleanable.dirty.ratio": "0.1"}),
+        (s.topic_weather, 6, 3, {"cleanup.policy": "compact",
+                                 "min.cleanable.dirty.ratio": "0.1"}),
+        (s.topic_features, 6, 3, {"cleanup.policy": "delete",
+                                  "retention.ms": str(24 * 3600 * 1000)}),
         (s.topic_predictions, 3, 3, {"retention.ms": str(24 * 3600 * 1000)}),
         (s.topic_alerts, 3, 3, {"retention.ms": str(90 * 24 * 3600 * 1000)}),
         (s.topic_dlq, 1, 3, {"retention.ms": str(30 * 24 * 3600 * 1000)}),

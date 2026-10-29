@@ -17,7 +17,12 @@ import requests
 from confluent_kafka import Consumer
 
 from streaming.common import (
-    Settings, from_json, get_logger, kafka_consumer_conf, now_ms, to_json,
+    Settings,
+    from_json,
+    get_logger,
+    kafka_consumer_conf,
+    now_ms,
+    to_json,
 )
 
 log = get_logger("es-indexer")
@@ -28,16 +33,32 @@ MAPPING = {
             "tier": {"type": "keyword"},
             "cell_id": {"type": "keyword"},
             "region_id": {"type": "keyword"},
+            "region_name": {"type": "keyword"},
             "location": {"type": "geo_point"},
             "probability": {"type": "float"},
             "model": {"type": "keyword"},
             "message": {"type": "text"},
             "event_ts": {"type": "date", "format": "strict_date_optional_time"},
             "@timestamp": {"type": "date"},
-            "trigger": {"properties": {
-                "erc": {"type": "float"}, "fm100": {"type": "float"},
-                "wind": {"type": "float"}, "tmmx": {"type": "float"},
-            }},
+            "radiometry": {
+                "properties": {
+                    "t_mir": {"type": "float"},
+                    "t_tir1": {"type": "float"},
+                    "delta_t": {"type": "float"},
+                    "frp_mw": {"type": "float"},
+                    "solar_elev": {"type": "float"},
+                }
+            },
+            "weather": {
+                "properties": {
+                    "fwi": {"type": "float"},
+                    "temp_c": {"type": "float"},
+                    "rh": {"type": "float"},
+                    "wind_speed": {"type": "float"},
+                    "soil_moisture": {"type": "float"},
+                    "vpd": {"type": "float"},
+                }
+            },
         }
     }
 }
@@ -46,7 +67,7 @@ MAPPING = {
 class Indexer:
     def __init__(self, settings: Settings | None = None):
         self.s = settings or Settings()
-        self.consumer = Consumer(kafka_consumer_conf("wildfire-indexer", self.s))
+        self.consumer = Consumer(kafka_consumer_conf("mosdac-wildfire-indexer", self.s))
         self.consumer.subscribe([self.s.topic_alerts])
         self.buffer: list[dict] = []
         self.indexed = 0
@@ -60,7 +81,7 @@ class Indexer:
                 return True
             r = requests.put(f"{self.s.es_url}/{INDEX}", json=MAPPING, timeout=5)
             r.raise_for_status()
-            log.info("created index %s", INDEX)
+            log.info("Created Elasticsearch index %s", INDEX)
             return True
         except requests.RequestException as exc:
             log.warning("ES unavailable: %s", exc)
@@ -78,21 +99,25 @@ class Indexer:
             lines.append(to_json(doc).decode())
         body = "\n".join(lines) + "\n"
         try:
-            r = requests.post(f"{self.s.es_url}/_bulk",
-                              data=body, headers={"Content-Type": "application/x-ndjson"},
-                              timeout=10)
+            r = requests.post(
+                f"{self.s.es_url}/_bulk",
+                data=body,
+                headers={"Content-Type": "application/x-ndjson"},
+                timeout=10,
+            )
             r.raise_for_status()
             self.indexed += len(self.buffer)
             self.stats["indexed"] = self.indexed
             self.buffer.clear()
             self.es_ok = True
         except requests.RequestException as exc:
-            log.warning("bulk index failed (%s) - %d alerts buffered",
-                        exc, len(self.buffer))
+            log.warning(
+                "Bulk index failed (%s) - %d alerts buffered", exc, len(self.buffer)
+            )
             self.es_ok = False
 
     def run(self):
-        log.info("indexer online -> %s/%s", self.s.es_url, INDEX)
+        log.info("Indexer online -> %s/%s", self.s.es_url, INDEX)
         last_retry = 0.0
         last_stats = 0.0
         try:
@@ -119,7 +144,7 @@ class Indexer:
         finally:
             self.flush(force=True)
             self.consumer.close()
-            log.info("indexer stopped: %d indexed total", self.indexed)
+            log.info("Indexer stopped: %d indexed total", self.indexed)
 
 
 if __name__ == "__main__":

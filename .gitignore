@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 .venv/
 .env
+config.json
+error_logs/
+MOSDAC Data Download/
 
 # MLflow
 mlruns/
@@ -33,6 +36,9 @@ __pycache__/
 
 # Env
 .env
+config.json
+error_logs/
+MOSDAC Data Download/
 
 # OS
 .DS_Store

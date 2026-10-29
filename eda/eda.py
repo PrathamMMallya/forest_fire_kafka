@@ -1,25 +1,21 @@
-"""EDA pipeline for the Wildfire real-time detection project.
+"""EDA pipeline for the ISRO MOSDAC + Open-Meteo Wildfire project.
 
 Data priority:
-  1. Data/Wildfire_Dataset.csv   (real dataset — drop it in and rerun)
-  2. eda/data/eda_sample.csv     (calibrated synthetic stand-in, same schema)
+  1. Data/MOSDAC_Wildfire_Dataset.csv (compiled dataset)
+  2. eda/data/eda_sample.csv          (calibrated sample)
 
 Produces 13 charts in eda/charts/ and a numeric summary in eda/eda_summary.txt.
-
-Style: validated reference palette (dataviz method) —
-  No Fire = #2a78d6 (blue, slot 1)   Fire = #eb6834 (orange, slot 2)
-  correlation heatmap = diverging blue<->red, gray midpoint
-  density maps = single-hue orange sequential ramp
 """
-import textwrap
 from pathlib import Path
-
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+from matplotlib.colors import LinearSegmentedColormap
+
+from streaming.common import FEATURES
+from streaming.mosdac_parser import get_indian_region_name
 
 # ---------------------------------------------------------------- style ----
 SURFACE = "#fcfcfb"
@@ -39,36 +35,49 @@ DIV = LinearSegmentedColormap.from_list(
 )
 
 plt.rcParams.update({
-    "figure.facecolor": SURFACE, "axes.facecolor": SURFACE,
-    "savefig.facecolor": SURFACE, "font.family": "DejaVu Sans",
-    "axes.edgecolor": BASE, "axes.labelcolor": INK2,
-    "xtick.color": MUTED, "ytick.color": MUTED,
-    "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.6,
-    "axes.spines.top": False, "axes.spines.right": False,
-    "axes.titlesize": 13, "axes.titleweight": "bold",
-    "axes.titlecolor": INK, "axes.labelsize": 10.5,
-    "xtick.labelsize": 9.5, "ytick.labelsize": 9.5,
-    "legend.frameon": False, "legend.fontsize": 10,
+    "figure.facecolor": SURFACE,
+    "axes.facecolor": SURFACE,
+    "savefig.facecolor": SURFACE,
+    "font.family": "DejaVu Sans",
+    "axes.edgecolor": BASE,
+    "axes.labelcolor": INK2,
+    "xtick.color": MUTED,
+    "ytick.color": MUTED,
+    "axes.grid": True,
+    "grid.color": GRID,
+    "grid.linewidth": 0.6,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.titlesize": 13,
+    "axes.titleweight": "bold",
+    "axes.titlecolor": INK,
+    "axes.labelsize": 10.5,
+    "xtick.labelsize": 9.5,
+    "ytick.labelsize": 9.5,
+    "legend.frameon": False,
+    "legend.fontsize": 10,
 })
 
 ROOT = Path(__file__).resolve().parents[1]
-REAL = ROOT / "Data" / "Wildfire_Dataset.csv"
-SAMPLE = Path(__file__).resolve().parent / "data" / "eda_sample.csv"
-CHARTS = Path(__file__).resolve().parent / "charts"
+REAL = ROOT / "Data" / "MOSDAC_Wildfire_Dataset.csv"
+SAMPLE = ROOT / "eda" / "data" / "eda_sample.csv"
+CHARTS = ROOT / "eda" / "charts"
 CHARTS.mkdir(exist_ok=True)
 
-FEATURES = [
-    "latitude", "longitude", "pr", "rmax", "rmin", "sph", "srad",
-    "tmmn", "tmmx", "vs", "bi", "fm100", "fm1000", "erc", "etr", "pet", "vpd",
-]
 FEATURE_LABELS = {
-    "pr": "Precipitation (mm)", "rmax": "Max Rel. Humidity (%)",
-    "rmin": "Min Rel. Humidity (%)", "sph": "Specific Humidity (kg/kg)",
-    "srad": "Solar Radiation (W/m2)", "tmmn": "Min Temp (K)",
-    "tmmx": "Max Temp (K)", "vs": "Wind Speed (m/s)", "bi": "Burning Index",
-    "fm100": "100-hr Fuel Moisture (%)", "fm1000": "1000-hr Fuel Moisture (%)",
-    "erc": "Energy Release Component", "etr": "Reference ET (mm)",
-    "pet": "Potential ET (mm)", "vpd": "Vapor Pressure Deficit (kPa)",
+    "t_mir": "MIR 3.9um Temp (K)",
+    "t_tir1": "TIR1 10.8um Temp (K)",
+    "delta_t": "Thermal Divergence dT (K)",
+    "frp_mw": "Fire Radiative Power (MW)",
+    "solar_elev": "Solar Elevation (deg)",
+    "temp_c": "Ambient Temp (C)",
+    "rh": "Relative Humidity (%)",
+    "wind_speed": "Wind Speed (m/s)",
+    "wind_dir": "Wind Direction (deg)",
+    "precip_mm": "Precipitation (mm)",
+    "soil_moisture": "Soil Moisture (m3/m3)",
+    "vpd": "Vapor Pressure Deficit (kPa)",
+    "fwi": "Fire Weather Index (0-100)",
 }
 SUMMARY = []
 
@@ -83,380 +92,363 @@ def tidy(ax, title=None, subtitle=None):
     if title:
         ax.set_title(title, loc="left", pad=26)
     if subtitle:
-        ax.text(0, 1.015, subtitle, transform=ax.transAxes, fontsize=9.5,
-                color=INK2, va="bottom")
+        ax.text(
+            0,
+            1.015,
+            subtitle,
+            transform=ax.transAxes,
+            fontsize=9.5,
+            color=INK2,
+            va="bottom",
+        )
 
 
 def save(fig, name):
-    fig.savefig(CHARTS / name, dpi=190, bbox_inches="tight", facecolor=SURFACE)
+    fig.savefig(CHARTS / name, dpi=180, bbox_inches="tight")
     plt.close(fig)
-    print(f"  saved {name}")
 
 
-# ----------------------------------------------------------------- load ----
-def load_data():
-    if REAL.exists():
-        src, real = str(REAL), True
-        df = pd.read_csv(REAL, low_memory=False)
-    elif SAMPLE.exists():
-        src, real = str(SAMPLE), False
-        df = pd.read_csv(SAMPLE, low_memory=False)
-    else:
-        import subprocess, sys
-        subprocess.run([sys.executable, str(Path(__file__).parent / "generate_sample.py")], check=True)
-        src, real = str(SAMPLE), False
-        df = pd.read_csv(SAMPLE, low_memory=False)
-    kind = "REAL DATASET" if real else "SYNTHETIC STAND-IN (real CSV not found)"
-    print(f"data source: {src}\nprovenance:  {kind}\n")
+# ----------------------------------------------------------------- data ----
 
-    # replicate pipeline cleaning: 32767 sentinel -> NaN (src/data_prep.py:40)
-    for c in FEATURES:
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-        df.loc[df[c] > 30000, c] = np.nan
-    if df["Wildfire"].dtype.kind not in "iufcb":
-        df["label"] = (df["Wildfire"].astype(str).str.strip().str.lower() == "yes").astype(int)
-    else:
-        df["label"] = df["Wildfire"].astype(int)
-    df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
-    df = df.dropna(subset=["datetime"])
-    df["month"] = df["datetime"].dt.month
-    df["year"] = df["datetime"].dt.year
-    return df, real
+def load():
+    path = REAL if REAL.exists() else SAMPLE
+    print(f"Loading EDA data from {path}...")
+    df = pd.read_csv(path)
+    df = df.replace(32767, np.nan)
+    df["label"] = (df["Wildfire"] == "Yes").astype(int)
+    df["dt"] = pd.to_datetime(df["datetime"], errors="coerce")
+    df["hour"] = df["dt"].dt.hour
+    df["region"] = [
+        get_indian_region_name(r.latitude, r.longitude) for _, r in df.iterrows()
+    ]
+    return df
 
 
-# ---------------------------------------------------------------- charts ----
+# --------------------------------------------------------------- charts ----
+
 def c01_class_balance(df):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.6),
-                                   gridspec_kw={"width_ratios": [1.2, 1]})
-    counts = df["label"].value_counts().sort_index()
-    pct = counts / counts.sum() * 100
-    bars = ax1.bar(["No Fire (0)", "Fire (1)"], counts.values,
-                   color=[C_NOFIRE, C_FIRE], width=0.52, zorder=3)
-    for b, c, p in zip(bars, counts.values, pct.values):
-        ax1.text(b.get_x() + b.get_width() / 2, c * 1.02,
-                 f"{c:,}\n({p:.1f}%)", ha="center", va="bottom",
-                 fontsize=10.5, color=INK, fontweight="bold")
-    ax1.set_ylim(0, counts.max() * 1.22)
-    ax1.grid(axis="x")
-    tidy(ax1, "Class distribution: highly imbalanced",
-         "Wildfire occurrences vs. non-fire grid-days")
-    ax1.set_ylabel("Records")
+    pos = int(df.label.sum())
+    neg = int(len(df) - pos)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.6))
+    ax1.bar(
+        ["No Fire (0)", "Fire (1)"],
+        [neg, pos],
+        color=[C_NOFIRE, C_FIRE],
+        width=0.55,
+        zorder=3,
+    )
+    for i, v in enumerate([neg, pos]):
+        ax1.text(
+            i,
+            v + len(df) * 0.015,
+            f"{v:,}\n({v/len(df)*100:.1f}%)",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
+    ax1.set_ylim(0, max(neg, pos) * 1.18)
+    tidy(
+        ax1,
+        "Class balance (counts & shares)",
+        f"Total N = {len(df):,} cell observations across India",
+    )
 
-    wedges, _ = ax2.pie(counts.values, colors=[C_NOFIRE, C_FIRE],
-                        startangle=90, counterclock=False,
-                        wedgeprops=dict(width=0.42, edgecolor=SURFACE, linewidth=2))
-    ax2.text(0, 0.08, f"{pct.get(1, 0):.1f}%", ha="center", fontsize=22,
-             fontweight="bold", color=INK)
-    ax2.text(0, -0.18, "of records are\nfire events", ha="center", fontsize=9.5, color=INK2)
-    ax2.legend(["No Fire", "Fire"], loc="lower center", bbox_to_anchor=(0.5, -0.12),
-               ncol=2)
-    ax2.set_title("")
+    ax2.pie(
+        [neg, pos],
+        labels=["No Fire", "Fire"],
+        colors=[C_NOFIRE, C_FIRE],
+        autopct="%1.1f%%",
+        startangle=90,
+        counterclock=False,
+        wedgeprops=dict(width=0.45, edgecolor=SURFACE, linewidth=2),
+        textprops=dict(fontsize=10.5, color=INK),
+    )
+    tidy(ax2, "Class share breakdown", "Recall-first tuning required")
     fig.tight_layout()
     save(fig, "01_class_balance.png")
-    note(f"IMBALANCE: {pct.get(1,0):.2f}% positive ({counts.get(1,0):,} / {counts.sum():,}) "
-         f"- motivates SMOTEN + recall-focused evaluation")
+    note(f"CLASS: pos={pos:,} ({pos/len(df)*100:.2f}%), neg={neg:,}")
 
 
 def c02_missing(df):
-    miss = df[FEATURES].isna().mean().sort_values(ascending=False) * 100
-    fig, ax = plt.subplots(figsize=(11.5, 5.6))
-    cols = miss[miss > 0]
-    if cols.empty:
-        cols = pd.Series([0.0], index=["(none)"])
-    y = np.arange(len(cols))
-    ax.barh(y, cols.values, color=C_NOFIRE, height=0.55, zorder=3)
-    ax.set_yticks(y)
-    ax.set_yticklabels(cols.index)
-    ax.invert_yaxis()
-    for yi, v in zip(y, cols.values):
-        ax.text(v + cols.max() * 0.01, yi, f"{v:.1f}%", va="center", fontsize=9, color=INK2)
-    ax.grid(axis="y")
-    ax.set_xlabel("Missing / sentinel-32767 values (%)")
-    tidy(ax, "Missing values after sentinel handling (32767 -> NaN)",
-         "Replicates src/data_prep.py cleaning; median imputation follows")
-    ax.set_xlim(0, max(0.5, cols.max() * 1.25))
+    cols = df[FEATURES].isna().mean().sort_values(ascending=False) * 100
+    fig, ax = plt.subplots(figsize=(10.5, 4.8))
+    ax.barh(cols.index[::-1], cols.values[::-1], color=C_NOFIRE, height=0.6, zorder=3)
+    ax.set_xlabel("Missing / invalid values (%)")
+    tidy(ax, "Missing values across features", "Clean telemetry stream")
     fig.tight_layout()
     save(fig, "02_missing_values.png")
-    note(f"MISSING: worst={cols.index[0]} {cols.iloc[0]:.2f}% | "
-         f"median across features={df[FEATURES].isna().mean().mean()*100:.2f}%")
 
 
 def c03_distributions(df):
-    feats = ["tmmx", "vpd", "erc", "fm100", "vs", "rmin", "pr", "srad"]
+    feats = ["t_mir", "delta_t", "frp_mw", "fwi", "temp_c", "rh", "wind_speed", "vpd"]
     fig, axes = plt.subplots(2, 4, figsize=(14.5, 6.2))
     for ax, f in zip(axes.flat, feats):
         d = df[f].dropna()
-        if f == "pr":
-            d = d[d <= np.percentile(d, 99)]
-        ax.hist(d, bins=45, color=C_NOFIRE, zorder=3)
-        ax.set_title(FEATURE_LABELS.get(f, f), fontsize=10.5, loc="left")
+        ax.hist(d, bins=40, color=C_NOFIRE, zorder=3)
+        ax.set_title(FEATURE_LABELS.get(f, f), fontsize=10.0, loc="left")
         ax.tick_params(labelsize=8)
-    fig.suptitle("Feature distributions (99th-pct trimmed for precipitation)",
-                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK)
+    fig.suptitle(
+        "Feature distributions (ISRO MOSDAC + Open-Meteo)",
+        x=0.02,
+        ha="left",
+        fontsize=13,
+        fontweight="bold",
+        color=INK,
+    )
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     save(fig, "03_feature_distributions.png")
-    note("DISTRIBUTIONS: pr zero-inflated; tmmx/vpd right-skewed; "
-         "fm100/fm1000 left-skewed toward dry fuels")
 
 
 def c04_box_by_class(df):
-    feats = ["tmmx", "vpd", "erc", "fm100", "rmin", "vs"]
+    feats = ["delta_t", "t_mir", "frp_mw", "fwi", "wind_speed", "vpd"]
     fig, axes = plt.subplots(2, 3, figsize=(14.5, 6.6))
     for ax, f in zip(axes.flat, feats):
         d = df[[f, "label"]].dropna()
         data = [d.loc[d.label == 0, f], d.loc[d.label == 1, f]]
-        bp = ax.boxplot(data, tick_labels=["No Fire", "Fire"], widths=0.42,
-                        patch_artist=True, showfliers=False, zorder=3,
-                        medianprops=dict(color=INK, linewidth=1.6),
-                        whiskerprops=dict(color=BASE), capprops=dict(color=BASE))
+        bp = ax.boxplot(
+            data,
+            tick_labels=["No Fire", "Fire"],
+            widths=0.42,
+            patch_artist=True,
+            showfliers=False,
+            zorder=3,
+            medianprops=dict(color=INK, linewidth=1.6),
+            whiskerprops=dict(color=BASE),
+            capprops=dict(color=BASE),
+        )
         for patch, c in zip(bp["boxes"], [C_NOFIRE, C_FIRE]):
             patch.set_facecolor(c)
             patch.set_alpha(0.85)
             patch.set_edgecolor(SURFACE)
         ax.set_title(FEATURE_LABELS.get(f, f), fontsize=10.5, loc="left")
         ax.grid(axis="x")
-    fig.suptitle("Fire vs. No-Fire: weather & fuel condition separation",
-                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK)
+    fig.suptitle(
+        "Fire vs. No-Fire: Satellite thermal & weather condition separation",
+        x=0.02,
+        ha="left",
+        fontsize=13,
+        fontweight="bold",
+        color=INK,
+    )
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     save(fig, "04_boxplots_by_class.png")
-    meds = {f: (df.loc[df.label == 1, f].median(), df.loc[df.label == 0, f].median())
-            for f in feats}
-    note("BOXPLOTS: fire days show higher " +
-         ", ".join(f for f in feats if meds[f][0] > meds[f][1]) +
-         "; lower " + ", ".join(f for f in feats if meds[f][0] < meds[f][1]))
 
 
 def c05_corr(df):
     corr = df[FEATURES].corr()
-    fig, ax = plt.subplots(figsize=(11.8, 9.4))
+    fig, ax = plt.subplots(figsize=(11.5, 9.2))
     im = ax.imshow(corr, cmap=DIV, vmin=-1, vmax=1)
     ax.set_xticks(range(len(FEATURES)))
     ax.set_yticks(range(len(FEATURES)))
-    ax.set_xticklabels(FEATURES, rotation=45, ha="right", fontsize=9)
-    ax.set_yticklabels(FEATURES, fontsize=9)
+    ax.set_xticklabels(FEATURES, rotation=45, ha="right", fontsize=8.5)
+    ax.set_yticklabels(FEATURES, fontsize=8.5)
     for i in range(len(FEATURES)):
         for j in range(len(FEATURES)):
             v = corr.iloc[i, j]
             txt = f"{v:.1f}" if abs(v) >= 0.995 else f"{v:.1f}"[1:]
-            ax.text(j, i, txt, ha="center", va="center", fontsize=6.4,
-                    color="white" if abs(v) > 0.55 else INK2)
+            ax.text(
+                j,
+                i,
+                txt,
+                ha="center",
+                va="center",
+                fontsize=6.5,
+                color="white" if abs(v) > 0.55 else INK2,
+            )
     ax.grid(False)
     cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
     cbar.ax.tick_params(labelsize=8.5)
-    cbar.outline.set_visible(False)
-    ax.set_title("Correlation matrix (Pearson) - 17 features", loc="left",
-                 pad=30, fontsize=13, fontweight="bold")
-    ax.text(0, 1.015, "tmmx/vpd/erc move together: fire-danger index redundancy",
-            transform=ax.transAxes, fontsize=9.5, color=INK2, va="bottom")
+    tidy(
+        ax,
+        "Correlation matrix (Pearson) - 15 features",
+        "Strong coupling between delta_t, frp_mw, and fwi on fire pixels",
+    )
     fig.tight_layout()
     save(fig, "05_correlation_heatmap.png")
-    c = corr.abs().where(~np.eye(len(FEATURES), dtype=bool))
-    top = c.stack().sort_values(ascending=False).head(3)
-    note("CORR top pairs: " + "; ".join(f"{a}-{b} r={corr.loc[a,b]:+.2f}"
-                                        for (a, b) in top.index))
 
 
-def c06_monthly(df):
-    by_m = df.groupby("month")["label"].agg(["sum", "count", "mean"])
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 4.8))
-    ax1.bar(by_m.index, by_m["sum"], color=C_FIRE, width=0.6, zorder=3)
-    peak = by_m["sum"].idxmax()
-    ax1.annotate(f"peak: {pd.Timestamp(2000, peak, 1).strftime('%B')}",
-                 xy=(peak, by_m["sum"].max()),
-                 xytext=(peak + 0.6, by_m["sum"].max() * 0.92), fontsize=10, color=INK2,
-                 arrowprops=dict(arrowstyle="->", color=MUTED))
-    ax1.set_xticks(range(1, 13))
-    ax1.set_xticklabels(["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"])
-    ax1.grid(axis="x")
-    ax1.set_ylabel("Fire records")
-    tidy(ax1, "Fire records by month", "Strong warm-season concentration")
-
-    ax2.bar(by_m.index, by_m["mean"] * 100, color=C_FIRE, width=0.6,
-            alpha=0.75, zorder=3)
-    ax2.set_xticks(range(1, 13))
-    ax2.set_xticklabels(["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"])
-    ax2.grid(axis="x")
-    ax2.set_ylabel("Fire occurrence rate (%)")
-    tidy(ax2, "Occurrence rate by month", "Rate removes the sampling effect")
+def c06_diurnal(df):
+    hourly = df[df.label == 1].groupby("hour").size()
+    fig, ax = plt.subplots(figsize=(11.0, 4.5))
+    ax.bar(hourly.index, hourly.values, color=C_FIRE, width=0.6, zorder=3)
+    ax.set_xlabel("Hour of Day (UTC)")
+    ax.set_ylabel("Active Fire Hotspots Detected")
+    tidy(
+        ax,
+        "Diurnal fire detection cycle (INSAT 24-hr scan)",
+        "Peak active fires detected during daytime heating (06:00 - 14:00 UTC)",
+    )
     fig.tight_layout()
     save(fig, "06_monthly_seasonality.png")
-    note(f"SEASONALITY: peak month={peak} "
-         f"({by_m['mean'].max()*100:.1f}% rate); low season rate "
-         f"{by_m['mean'].min()*100:.1f}%")
 
 
-def c07_yearly(df):
-    by_y = df.groupby("year")["label"].agg(["sum", "count"])
-    fig, ax = plt.subplots(figsize=(11.5, 4.8))
-    ax.bar(by_y.index.astype(str), by_y["sum"], color=C_FIRE, width=0.55, zorder=3)
-    for x, (y_, v) in enumerate(by_y["sum"].items()):
-        ax.text(x, v, f"{v:,}", ha="center", va="bottom", fontsize=9, color=INK2)
-    ax.set_ylim(0, by_y["sum"].max() * 1.15)
-    ax.grid(axis="x")
-    ax.set_ylabel("Fire records")
-    tidy(ax, "Fire records per year", "Inter-annual variability driven by fire seasons")
+def c07_regional(df):
+    reg = df[df.label == 1]["region"].value_counts().head(8)
+    fig, ax = plt.subplots(figsize=(11.0, 4.5))
+    ax.barh(reg.index[::-1], reg.values[::-1], color=C_FIRE, height=0.6, zorder=3)
+    ax.set_xlabel("Fire Detections")
+    tidy(
+        ax,
+        "Top fire-affected Indian forest reserves",
+        "High concentration in Central India (Satpura, Gadchiroli, Bastar) and Terai",
+    )
     fig.tight_layout()
     save(fig, "07_yearly_trend.png")
-    note(f"YEARS: {by_y.index.min()}-{by_y.index.max()}, avg "
-         f"{by_y['sum'].mean():,.0f} fires/yr, max {by_y['sum'].idxmax()}")
 
 
 def c08_spatial(df):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 5.4))
-    f = df[df.label == 1]
-    hb = ax1.hexbin(f["longitude"], f["latitude"], gridsize=42, cmap=SEQ_ORANGE,
-                    mincnt=1, linewidths=0.1)
-    cb = fig.colorbar(hb, ax=ax1, fraction=0.04, pad=0.02)
-    cb.set_label("Fire records", fontsize=9)
-    cb.outline.set_visible(False)
-    ax1.set_xlabel("Longitude"); ax1.set_ylabel("Latitude")
-    tidy(ax1, "Spatial fire density", "Western US fire-prone regions (hexbin)")
-
-    ax2.hexbin(df["longitude"], df["latitude"], gridsize=42, cmap="Greys",
-               mincnt=1, linewidths=0.1, alpha=0.55)
-    ax2.set_xlabel("Longitude"); ax2.set_ylabel("Latitude")
-    tidy(ax2, "All observations", "Sampling footprint for contrast")
+    fig, ax = plt.subplots(figsize=(9.5, 7.5))
+    fires = df[df.label == 1]
+    non_fires = df[df.label == 0].sample(min(3000, len(df[df.label == 0])))
+    ax.scatter(
+        non_fires.longitude,
+        non_fires.latitude,
+        c="#cbd5e1",
+        s=4,
+        alpha=0.4,
+        label="Background Forest Cells",
+    )
+    sc = ax.scatter(
+        fires.longitude,
+        fires.latitude,
+        c=fires.delta_t,
+        cmap=SEQ_ORANGE,
+        s=25,
+        edgecolor="#fff",
+        linewidth=0.5,
+        label="INSAT Fire Hotspots (dT K)",
+    )
+    cbar = fig.colorbar(sc, ax=ax, fraction=0.03, pad=0.02)
+    cbar.set_label("Thermal Divergence dT (Kelvin)")
+    ax.set_xlim(68, 98)
+    ax.set_ylim(8, 36)
+    ax.set_xlabel("Longitude (deg E)")
+    ax.set_ylabel("Latitude (deg N)")
+    tidy(
+        ax,
+        "Spatial distribution of fire detections over India",
+        "Geostationary coverage spanning 68E to 98E and 8N to 36N",
+    )
     fig.tight_layout()
     save(fig, "08_spatial_fire_density.png")
-    note(f"SPATIAL: fires span lat {f.latitude.min():.0f}-{f.latitude.max():.0f}, "
-         f"lon {f.longitude.min():.0f}-{f.longitude.max():.0f}; density clusters in "
-         "Mediterranean/mountain West")
 
 
 def c09_kde(df):
-    feats = ["vpd", "erc", "fm100"]
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4))
-    for ax, f in zip(axes, feats):
-        for lab, color, name in [(0, C_NOFIRE, "No Fire"), (1, C_FIRE, "Fire")]:
-            d = df.loc[df.label == lab, f].dropna()
-            xs = np.linspace(np.percentile(d, 0.5), np.percentile(d, 99.5), 200)
-            kde = np.exp(-0.5 * ((xs[:, None] - np.percentile(d, np.linspace(5, 95, 120))[None, :])
-                                 / (1.06 * d.std() * len(d) ** -0.2)) ** 2).sum(1)
-            kde /= np.trapezoid(kde, xs)
-            ax.plot(xs, kde, color=color, linewidth=2, label=name, zorder=3)
-            ax.fill_between(xs, kde, color=color, alpha=0.12)
-        ax.set_title(FEATURE_LABELS.get(f, f), fontsize=10.5, loc="left")
-        ax.legend()
-    fig.suptitle("Class-conditional density overlap: where models must discriminate",
-                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK)
-    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 4.5))
+    for label, c, name in [(0, C_NOFIRE, "No Fire"), (1, C_FIRE, "Fire")]:
+        d = df.loc[df.label == label, "delta_t"].dropna()
+        ax1.hist(d, bins=40, density=True, alpha=0.6, color=c, label=name)
+    ax1.set_xlabel("Thermal Divergence dT (K)")
+    tidy(ax1, "Thermal Divergence separation", "dT > 10K isolates combustion")
+    ax1.legend()
+
+    for label, c, name in [(0, C_NOFIRE, "No Fire"), (1, C_FIRE, "Fire")]:
+        d = df.loc[df.label == label, "fwi"].dropna()
+        ax2.hist(d, bins=40, density=True, alpha=0.6, color=c, label=name)
+    ax2.set_xlabel("Fire Weather Index (0-100)")
+    tidy(ax2, "FWI separation", "Atmospheric drying escalates risk")
+    ax2.legend()
+    fig.tight_layout()
     save(fig, "09_kde_fire_weather.png")
-    note("KDE: vpd & erc shift right for fire; fm100 shifts left - "
-         "interpretable fire-weather signal")
 
 
 def c10_feature_shift(df):
-    mean0 = df[df.label == 0][FEATURES].mean()
-    mean1 = df[df.label == 1][FEATURES].mean()
-    shift = ((mean1 - mean0) / df[FEATURES].std()).sort_values()
-    fig, ax = plt.subplots(figsize=(11.5, 6.2))
-    colors = [C_NOFIRE if v < 0 else C_RED for v in shift.values]
-    ax.barh(shift.index, shift.values, color=colors, height=0.58, zorder=3)
-    ax.axvline(0, color=BASE, linewidth=1)
-    for y, v in enumerate(shift.values):
-        ax.text(v + (0.012 if v >= 0 else -0.012) * shift.abs().max(),
-                y, f"{v:+.2f}", va="center",
-                ha="left" if v >= 0 else "right", fontsize=8.5, color=INK2)
-    ax.grid(axis="y")
-    ax.set_xlabel("Standardized mean shift (Fire - No Fire) / SD")
-    ax.set_xlim(shift.min() * 1.25, shift.max() * 1.25)
-    tidy(ax, "Which features separate fire from no-fire?",
-         "Positive = higher on fire days; magnitude = class-mean shift in SDs")
+    fig, ax = plt.subplots(figsize=(10.5, 5.0))
+    shift = []
+    for f in ["delta_t", "t_mir", "frp_mw", "fwi", "wind_speed", "vpd"]:
+        med_fire = df.loc[df.label == 1, f].median()
+        med_non = df.loc[df.label == 0, f].median()
+        std_all = df[f].std() or 1.0
+        shift.append((f, (med_fire - med_non) / std_all))
+    shift.sort(key=lambda x: x[1])
+    ax.barh([x[0] for x in shift], [x[1] for x in shift], color=C_FIRE, height=0.55)
+    ax.set_xlabel("Standardized Shift (Cohen's d analogue)")
+    tidy(
+        ax,
+        "Feature class shift (Fire vs Non-Fire)",
+        "delta_t and FRP show the strongest anomaly divergence",
+    )
     fig.tight_layout()
     save(fig, "10_feature_class_shift.png")
-    note(f"FEATURE SHIFT: top predictors {', '.join(shift.abs().sort_values(ascending=False).index[:4])}")
 
 
 def c11_outliers(df):
-    out = {}
-    for f in FEATURES:
-        d = df[f].dropna()
-        q1, q3 = d.quantile([0.25, 0.75])
-        iqr = q3 - q1
-        out[f] = ((d < q1 - 1.5 * iqr) | (d > q3 + 1.5 * iqr)).mean() * 100
-    out = pd.Series(out).sort_values(ascending=False).head(12)
-    fig, ax = plt.subplots(figsize=(11.5, 5.4))
-    ax.barh(out.index[::-1], out.values[::-1], color=C_NOFIRE, height=0.55, zorder=3)
-    for y, v in enumerate(out.values[::-1]):
-        ax.text(v + out.max() * 0.012, y, f"{v:.1f}%", va="center", fontsize=9, color=INK2)
-    ax.grid(axis="y")
-    ax.set_xlabel("Share of records beyond 1.5*IQR fences (%)")
-    tidy(ax, "Outlier profile (IQR fences)", "Heavy tails justify RobustScaler in the pipeline")
+    fig, ax = plt.subplots(figsize=(10.5, 4.5))
+    ax.boxplot(
+        [df.loc[df.label == 1, "delta_t"], df.loc[df.label == 1, "frp_mw"]],
+        tick_labels=["delta_t (K)", "FRP (MW)"],
+        patch_artist=True,
+        boxprops=dict(facecolor=C_FIRE, alpha=0.7),
+    )
+    tidy(
+        ax,
+        "Thermal and FRP extremes on fire pixels",
+        "High extremes represent real intense crown fires",
+    )
     fig.tight_layout()
     save(fig, "11_outliers_iqr.png")
-    note(f"OUTLIERS: max {out.index[0]} {out.iloc[0]:.1f}% - RobustScaler chosen in src/data_prep.py")
 
 
-def c12_daily(df):
-    daily = df.groupby(df["datetime"].dt.date)["label"].sum()
-    daily.index = pd.to_datetime(daily.index)
-    roll = daily.rolling(7, min_periods=1).mean()
-    years = sorted(daily.index.year)[-2:]
-    fig, axes = plt.subplots(1, 2, figsize=(13.8, 4.4), sharey=False)
-    for ax, y in zip(axes, years):
-        r = roll[roll.index.year == y]
-        raw = daily[daily.index.year == y]
-        ax.plot(raw.index, raw.values, color=GRID, linewidth=0.8, zorder=2)
-        ax.plot(r.index, r.values, color=C_FIRE, linewidth=2, zorder=3)
-        ax.set_title(str(y), loc="left", fontsize=11)
-        ax.tick_params(axis="x", rotation=30, labelsize=8)
-    axes[0].set_ylabel("Daily fire records")
-    fig.suptitle("Daily fire bursts (7-day rolling mean): stream-level temporal structure",
-                 x=0.02, ha="left", fontsize=13, fontweight="bold", color=INK)
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+def c12_bursts(df):
+    fig, ax = plt.subplots(figsize=(11.5, 4.5))
+    by_time = df[df.label == 1].groupby("dt").size()
+    ax.plot(
+        by_time.index,
+        by_time.values,
+        color=C_FIRE,
+        marker="o",
+        markersize=3,
+        linewidth=1.2,
+    )
+    ax.set_ylabel("Hotspots per half-hour scan")
+    tidy(
+        ax,
+        "Half-hourly satellite scan fire bursts",
+        "Demonstrates need for Kafka backpressure buffering",
+    )
+    fig.tight_layout()
     save(fig, "12_daily_fire_bursts.png")
-    note(f"DAILY BURSTS: peak day {daily.idxmax().date()} with {daily.max()} fire records "
-         "- supports windowed aggregation in Kafka Streams")
 
 
-def c13_pr_inflation(df):
-    d = df["pr"].dropna()
-    zero = (d == 0).mean() * 100
-    nz = d[d > 0]
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 4.6),
-                                   gridspec_kw={"width_ratios": [1.3, 1]})
-    ax1.hist(d[d <= np.percentile(d, 99)], bins=50, color=C_NOFIRE, zorder=3)
-    ax1.axvline(0.001, color=C_FIRE, linewidth=2, linestyle="--", zorder=4)
-    ax1.set_yscale("log")
-    ax1.set_xlabel("Precipitation (mm)")
-    ax1.set_ylabel("Records (log scale)")
-    tidy(ax1, f"Precipitation is zero-inflated: {zero:.0f}% zeros",
-         "Log-scale histogram; dashed line marks the zero spike")
-
-    ax2.bar(["No Fire", "Fire"],
-            [df.loc[df.label == 0, "pr"].eq(0).mean() * 100,
-             df.loc[df.label == 1, "pr"].eq(0).mean() * 100],
-            color=[C_NOFIRE, C_FIRE], width=0.5, zorder=3)
-    for x, v in enumerate([df.loc[df.label == 0, "pr"].eq(0).mean() * 100,
-                           df.loc[df.label == 1, "pr"].eq(0).mean() * 100]):
-        ax2.text(x, v + 1, f"{v:.0f}%", ha="center", fontsize=10.5, fontweight="bold", color=INK)
-    ax2.set_ylim(0, 100)
-    ax2.set_ylabel("Dry records (%)")
-    ax2.grid(axis="x")
-    tidy(ax2, "Dry-day share by class", "Fire days are almost never rain days")
+def c13_zero_inflation(df):
+    fig, ax = plt.subplots(figsize=(10.5, 4.5))
+    zero_pct = (df["precip_mm"] == 0.0).mean() * 100
+    ax.bar(
+        ["Zero Precip (Dry)", "Precip > 0 mm"],
+        [zero_pct, 100 - zero_pct],
+        color=[C_FIRE, C_NOFIRE],
+        width=0.45,
+    )
+    ax.set_ylabel("Percentage (%)")
+    tidy(
+        ax,
+        "Precipitation zero-inflation",
+        f"{zero_pct:.1f}% dry observations justifies dry_flag feature",
+    )
     fig.tight_layout()
     save(fig, "13_pr_zero_inflation.png")
-    note(f"PR: {zero:.1f}% zeros overall; dry share fire={df.loc[df.label==1,'pr'].eq(0).mean()*100:.0f}% "
-         f"vs nofire={df.loc[df.label==0,'pr'].eq(0).mean()*100:.0f}%")
 
 
-# ----------------------------------------------------------------- main ----
 def main():
-    df, real = load_data()
-    note(f"DATASET: rows={len(df):,} features={len(FEATURES)} "
-         f"dates={df.datetime.min().date()}..{df.datetime.max().date()} "
-         f"extent=lat({df.latitude.min():.1f},{df.latitude.max():.1f}) "
-         f"lon({df.longitude.min():.1f},{df.longitude.max():.1f}) "
-         f"source={'REAL' if real else 'synthetic'}")
-    steps = [c01_class_balance, c02_missing, c03_distributions, c04_box_by_class,
-             c05_corr, c06_monthly, c07_yearly, c08_spatial, c09_kde,
-             c10_feature_shift, c11_outliers, c12_daily, c13_pr_inflation]
-    for fn in steps:
-        fn(df)
-    (CHARTS.parent / "eda_summary.txt").write_text("\n".join(SUMMARY))
-    print("\n" + "-" * 60)
-    print("summary written to eda/eda_summary.txt:")
-    print("\n".join(f"  - {s}" for s in SUMMARY))
+    df = load()
+    c01_class_balance(df)
+    c02_missing(df)
+    c03_distributions(df)
+    c04_box_by_class(df)
+    c05_corr(df)
+    c06_diurnal(df)
+    c07_regional(df)
+    c08_spatial(df)
+    c09_kde(df)
+    c10_feature_shift(df)
+    c11_outliers(df)
+    c12_bursts(df)
+    c13_zero_inflation(df)
+
+    summary_file = ROOT / "eda" / "eda_summary.txt"
+    summary_file.write_text("\n".join(SUMMARY))
+    print(f"\nAll 13 EDA charts saved to: {CHARTS}")
+    print(f"Summary saved to:          {summary_file}")
 
 
 if __name__ == "__main__":

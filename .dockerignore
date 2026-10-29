@@ -1,6 +1,5 @@
 __pycache__/
 *.pyc
-Data/
 src/
 mlruns/
 dvc/
@@ -9,3 +8,6 @@ dvc/
 .gitignore
 train.py
 requirements.txt
+logs/
+.venv/
+error_logs/

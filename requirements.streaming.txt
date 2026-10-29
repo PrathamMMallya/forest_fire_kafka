@@ -8,3 +8,6 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 requests>=2.31
 tqdm>=4.66
+h3>=4.0
+h5py>=3.8
+geojson>=3.0

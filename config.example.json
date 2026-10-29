@@ -1,0 +1,21 @@
+{
+  "user_credentials": {
+    "username/email": "${MOSDAC_USERNAME}",
+    "password": "${MOSDAC_PASSWORD}"
+  },
+  "search_parameters": {
+    "datasetId": "3RIMG_L2P_FIR",
+    "startTime": "2026-10-24",
+    "endTime": "2026-10-24",
+    "count": "",
+    "boundingBox": "68,6,98,38",
+    "gId": ""
+  },
+  "download_settings": {
+    "download_path": "./MOSDAC Data",
+    "organize_by_date": false,
+    "skip_user_input": false,
+    "generate_error_logs": true,
+    "error_logs_dir": ""
+  }
+}

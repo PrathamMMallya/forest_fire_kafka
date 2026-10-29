@@ -1,14 +1,1 @@
-DATASET: rows=250,000 features=17 dates=2014-01-01..2023-12-30 extent=lat(31.5,49.0) lon(-124.8,-103.0) source=synthetic
-IMBALANCE: 5.56% positive (13,907 / 250,000) - motivates SMOTEN + recall-focused evaluation
-MISSING: worst=tmmx 1.20% | median across features=0.64%
-DISTRIBUTIONS: pr zero-inflated; tmmx/vpd right-skewed; fm100/fm1000 left-skewed toward dry fuels
-BOXPLOTS: fire days show higher tmmx, vpd, erc, vs; lower fm100, rmin
-CORR top pairs: pet-etr r=+0.99; etr-pet r=+0.99; fm100-fm1000 r=+0.96
-SEASONALITY: peak month=7 (21.6% rate); low season rate 0.0%
-YEARS: 2014-2023, avg 1,391 fires/yr, max 2021
-SPATIAL: fires span lat 32-49, lon -125--103; density clusters in Mediterranean/mountain West
-KDE: vpd & erc shift right for fire; fm100 shifts left - interpretable fire-weather signal
-FEATURE SHIFT: top predictors vpd, erc, fm100, bi
-OUTLIERS: max pr 18.1% - RobustScaler chosen in src/data_prep.py
-DAILY BURSTS: peak day 2022-07-04 with 29 fire records - supports windowed aggregation in Kafka Streams
-PR: 81.9% zeros overall; dry share fire=92% vs nofire=81%
+CLASS: pos=1,356 (14.49%), neg=8,000

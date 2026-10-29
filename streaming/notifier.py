@@ -1,4 +1,4 @@
-"""Emergency alert dispatch (last pipeline stage).
+"""Emergency alert dispatch for ISRO MOSDAC wildfire pipeline.
 
 Consumes `wildfire.alerts` and dispatches:
   * console dispatch log (always)
@@ -15,7 +15,13 @@ import time
 import requests
 from confluent_kafka import Consumer
 
-from streaming.common import Settings, from_json, get_logger, kafka_consumer_conf, now_ms
+from streaming.common import (
+    Settings,
+    from_json,
+    get_logger,
+    kafka_consumer_conf,
+    now_ms,
+)
 
 log = get_logger("notifier")
 WEBHOOK = os.environ.get("EMERGENCY_WEBHOOK_URL", "")
@@ -25,17 +31,26 @@ PAGE_TIERS = {"WARNING", "EMERGENCY"}
 class Notifier:
     def __init__(self, settings: Settings | None = None):
         self.s = settings or Settings()
-        self.consumer = Consumer(kafka_consumer_conf("wildfire-notifier", self.s))
+        self.consumer = Consumer(kafka_consumer_conf("mosdac-wildfire-notifier", self.s))
         self.consumer.subscribe([self.s.topic_alerts])
-        self.stats = {"received": 0, "paged": 0, "webhook_ok": 0,
-                      "webhook_fail": 0, "started": now_ms()}
+        self.stats = {
+            "received": 0,
+            "paged": 0,
+            "webhook_ok": 0,
+            "webhook_fail": 0,
+            "started": now_ms(),
+        }
 
     def dispatch(self, alert: dict) -> None:
         tier = alert.get("tier", "WATCH")
-        line = (f"[{tier:^9}] cell={alert.get('cell_id')} "
-                f"p={alert.get('probability')} "
-                f"erc={alert.get('trigger', {}).get('erc')} "
-                f"| {alert.get('message')}")
+        rad = alert.get("radiometry", {})
+        line = (
+            f"[{tier:^9}] cell={alert.get('cell_id')} "
+            f"region={alert.get('region_name')} "
+            f"p={alert.get('probability')} "
+            f"dT={rad.get('delta_t')}K FRP={rad.get('frp_mw')}MW "
+            f"| {alert.get('message')}"
+        )
         (log.info if tier == "WATCH" else log.warning)(line)
 
         if tier in PAGE_TIERS and WEBHOOK:
@@ -47,7 +62,9 @@ class Notifier:
                 self.stats["webhook_fail"] += 1
 
     def run(self):
-        log.info("notifier online (webhook=%s)", "configured" if WEBHOOK else "console-only")
+        log.info(
+            "Notifier online (webhook=%s)", "configured" if WEBHOOK else "console-only"
+        )
         last_stats = 0.0
         try:
             while True:
@@ -56,9 +73,10 @@ class Notifier:
                     if m.error():
                         continue
                     try:
-                        self.dispatch(from_json(m.value()))
+                        alert = from_json(m.value())
+                        self.dispatch(alert)
                         self.stats["received"] += 1
-                        if from_json(m.value()).get("tier") in PAGE_TIERS:
+                        if alert.get("tier") in PAGE_TIERS:
                             self.stats["paged"] += 1
                     except Exception:
                         continue
