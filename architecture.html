@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wildfire Pipeline</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@500;700;900&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky side TOC + single reading column; stacks on phones.
+   Tokens: forest/ember field-guide palette, IBM Plex + Chivo. */
+:root {
+  --bg: #f4f5f0;
+  --surface: #ffffff;
+  --ink: #1d2b23;
+  --ink-soft: #44544b;
+  --line: #d8ddd3;
+  --accent: #c2410c;          /* ember */
+  --accent-soft: #fdeee4;
+  --pine: #1e5c3f;            /* deep forest */
+  --pine-soft: #e3efe7;
+  --watch: #b45309;
+  --warning: #c2410c;
+  --emergency: #b91c1c;
+  --code-bg: #eef1ea;
+  --chip: #ecefe6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141a16;
+    --surface: #1c2420;
+    --ink: #e6ece7;
+    --ink-soft: #a7b5ab;
+    --line: #33403a;
+    --accent: #fb8b4a;
+    --accent-soft: #3a2417;
+    --pine: #6fbf94;
+    --pine-soft: #1d3227;
+    --watch: #f2b04e;
+    --warning: #fb8b4a;
+    --emergency: #f26d6d;
+    --code-bg: #232c27;
+    --chip: #27312c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141a16; --surface: #1c2420; --ink: #e6ece7; --ink-soft: #a7b5ab;
+  --line: #33403a; --accent: #fb8b4a; --accent-soft: #3a2417;
+  --pine: #6fbf94; --pine-soft: #1d3227; --watch: #f2b04e; --warning: #fb8b4a;
+  --emergency: #f26d6d; --code-bg: #232c27; --chip: #27312c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px;
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 44px;
+}
+/* ---------------- TOC ---------------- */
+.toc { position: sticky; top: 24px; align-self: start; font-size: 13px; }
+.toc .toc-title {
+  font-family: "IBM Plex Mono", monospace; text-transform: uppercase;
+  letter-spacing: .12em; font-size: 11px; color: var(--ink-soft); margin-bottom: 10px;
+}
+.toc a {
+  display: block; color: var(--ink-soft); text-decoration: none;
+  padding: 4px 0 4px 12px; border-left: 2px solid var(--line);
+}
+.toc a:hover { color: var(--accent); border-left-color: var(--accent); }
+/* ---------------- Type ---------------- */
+h1, h2, h3 { font-family: "Chivo", "IBM Plex Sans", sans-serif; text-wrap: balance; line-height: 1.15; }
+h1 { font-size: clamp(1.9rem, 4.5vw, 2.7rem); font-weight: 900; letter-spacing: -0.015em; margin: 0 0 6px; }
+h2 {
+  font-size: 1.45rem; font-weight: 700; margin: 56px 0 14px;
+  padding-top: 14px; border-top: 2px solid var(--line);
+}
+h2 .no { color: var(--accent); font-family: "IBM Plex Mono", monospace; font-size: .85em; margin-right: 8px; }
+h3 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 8px; }
+p { margin: 10px 0; max-width: 72ch; }
+ul, ol { max-width: 68ch; }
+li { margin: 4px 0; }
+code, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .88em; }
+p code, li code, td code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre {
+  background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.55;
+  max-width: 100%;
+}
+a { color: var(--pine); }
+.kicker {
+  font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 8px;
+}
+.lede { font-size: 1.08rem; color: var(--ink-soft); max-width: 66ch; margin: 0 0 20px; }
+/* ---------------- Components ---------------- */
+.notice {
+  background: var(--pine-soft); border-left: 3px solid var(--pine);
+  border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 20px 0; max-width: 74ch;
+}
+.notice.warn { background: var(--accent-soft); border-left-color: var(--accent); }
+.notice .n-title { font-weight: 600; margin-bottom: 4px; }
+.tablebox { overflow-x: auto; margin: 14px 0; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 560px; }
+th {
+  font-family: "IBM Plex Mono", monospace; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--ink-soft); text-align: left;
+  padding: 8px 12px; border-bottom: 2px solid var(--line);
+}
+td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 16px 0; }
+.tile {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 14px 12px;
+}
+.tile .v { font-family: "Chivo", sans-serif; font-weight: 900; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.tile .v.hot { color: var(--accent); }
+.tile .k { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); margin-top: 2px; }
+.chip {
+  display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+  background: var(--chip); border-radius: 999px; padding: 2px 10px; margin: 2px 3px 2px 0;
+  white-space: nowrap;
+}
+/* tier cards */
+.tiers { display: grid; gap: 12px; margin: 16px 0; }
+.tier { background: var(--surface); border: 1px solid var(--line); border-left-width: 5px; border-radius: 10px; padding: 14px 18px; }
+.tier h4 { margin: 0 0 6px; font-family: "Chivo", sans-serif; font-size: 1rem; }
+.tier.t3 { border-left-color: var(--emergency); } .tier.t3 h4 { color: var(--emergency); }
+.tier.t2 { border-left-color: var(--warning); }  .tier.t2 h4 { color: var(--warning); }
+.tier.t1 { border-left-color: var(--watch); }   .tier.t1 h4 { color: var(--watch); }
+.tier .rule { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; background: var(--code-bg); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+/* pipeline diagram */
+.pipe { display: grid; gap: 0; margin: 20px 0; max-width: 760px; }
+.pnode {
+  background: var(--surface); border: 1.5px solid var(--pine); border-radius: 10px;
+  padding: 10px 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.pnode.kafka { border-style: dashed; border-color: var(--accent); }
+.pnode .pn { font-weight: 600; font-family: "Chivo", sans-serif; }
+.pnode .pd { color: var(--ink-soft); font-size: 13px; }
+.pnode .tag { margin-left: auto; }
+.parrow { text-align: center; color: var(--ink-soft); font-size: 18px; line-height: 1.2; padding: 2px 0; }
+.parrow .lbl { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; display: block; }
+footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12.5px; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: 1fr; gap: 0; }
+  .toc { position: static; display: flex; flex-wrap: wrap; gap: 2px 14px; margin-bottom: 18px; }
+  .toc .toc-title { width: 100%; }
+  .toc a { border-left: none; padding: 2px 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc" aria-label="Contents">
+  <div class="toc-title">Contents</div>
+  <a href="#data">1 · Data sources</a>
+  <a href="#combine">2 · How they combine</a>
+  <a href="#model">3 · Model &amp; metrics</a>
+  <a href="#kafka">4 · Kafka design</a>
+  <a href="#predictions">5 · Predictions in-stream</a>
+  <a href="#alerts">6 · Alert tiers</a>
+  <a href="#es">7 · Why Elasticsearch</a>
+  <a href="#mlops">8 · MLOps stack</a>
+  <a href="#geo">9 · India vs US data</a>
+</nav>
+
+<main>
+  <div class="kicker">Systems Dossier · Wildfire Risk Platform</div>
+  <h1>Satellite to siren:<br>the whole pipeline, explained</h1>
+  <p class="lede">ISRO MOSDAC hotspots + Open-Meteo weather stream through Kafka into an ML
+  detector, tiered alerts land in Elasticsearch, and a batch MLOps backend keeps the model
+  honest. This is what runs on your machine right now.</p>
+
+  <div class="notice">
+    <div class="n-title">Two generations live in this repo — know which is which</div>
+    <p><strong>Deployed (containers, running now):</strong> the India-focused
+    <em>ISRO&nbsp;MOSDAC + Open-Meteo</em> streaming pipeline — its code is baked into the Docker image.</p>
+    <p><strong>This checkout:</strong> the original <em>gridMET / western-US</em> generation — its code,
+    its README, and (importantly) the trained model artifacts both generations share.</p>
+  </div>
+
+  <!-- ============================ 1 DATA ============================ -->
+  <h2 id="data"><span class="no">1</span>Where the data comes from</h2>
+
+  <h3>1.1 ISRO MOSDAC — the satellite fire signal</h3>
+  <p><a href="https://mosdac.gov.in">MOSDAC</a> is ISRO's satellite data portal. The pipeline consumes
+  <strong>INSAT-3DR/3DS Level-2P Active Fire Hotspots</strong> (KML files — fire pixel coordinates +
+  observation times) and <strong>Level-1C radiance rasters</strong> (HDF5) to resolve physical
+  temperatures. <code>mdapi.py</code> is the token-authenticated downloader for MOSDAC's
+  <code>download_api</code> (datasets set in <code>config.json</code>). From the raw channels it derives
+  <strong>7 radiometric features</strong>:</p>
+  <div class="tablebox"><table>
+    <tr><th>Feature</th><th>What it is</th></tr>
+    <tr><td><code>latitude</code> <code>longitude</code></td><td>fire pixel location (4 km INSAT pixel)</td></tr>
+    <tr><td><code>t_mir</code></td><td>Mid-Wave Infrared brightness temp (K) — the fire channel</td></tr>
+    <tr><td><code>t_tir1</code></td><td>Thermal Infrared brightness temp (K) — background channel</td></tr>
+    <tr><td><code>delta_t</code></td><td><code>t_mir − t_tir1</code> — the core thermal-divergence fire signal</td></tr>
+    <tr><td><code>frp_mw</code></td><td>Fire Radiative Power (MW) via Wooster/Kaufman: <code>4.34e-19 × 16 km² × (T_MIR⁸ − T_TIR1⁸)</code></td></tr>
+    <tr><td><code>solar_elev</code></td><td>solar elevation — rejects sun-glint false alarms (hot ground at high sun)</td></tr>
+  </table></div>
+
+  <h3>1.2 Open-Meteo — the weather context</h3>
+  <p>A free weather API (<code>api.open-meteo.com/v1/forecast</code>) provides co-temporal conditions at
+  each fire's lat/lon, cached on disk (<code>mosdac_weather_cache.json</code>) so replays don't re-hit the
+  network. <strong>8 weather features:</strong></p>
+  <p>
+    <span class="chip">temp_c</span><span class="chip">rh</span><span class="chip">wind_speed</span><span class="chip">wind_dir</span><span class="chip">precip_mm</span><span class="chip">soil_moisture</span><span class="chip">vpd</span><span class="chip">fwi (computed)</span>
+  </p>
+  <p>The pipeline computes its own Fire Weather Index (0–100):</p>
+  <pre>dryness          = max(0, 100 − rh) × 0.35     (0–35)
+wind_effect      = min(wind_speed × 3.5, 30)   (0–30)
+vpd_effect       = min(vpd × 12, 30)           (0–30)
+soil_suppression = max(0, soil_moisture × 50)  (0–25)
+FWI = clamp(dryness + wind_effect + vpd_effect − soil_suppression, 0, 100)</pre>
+
+  <h3>1.3 gridMET — the labeled training history</h3>
+  <p><a href="https://www.climatologylab.org/gridmet.html">gridMET</a> (Univ. of Idaho): 4 km gridded
+  <strong>daily</strong> surface weather for the western US, joined with a historical wildfire label — the
+  only source with ground truth (<code>Wildfire: Yes/No</code>). Files: <code>Data/Wildfire_Dataset.csv</code>
+  and the 212,500-row <code>eda/data/eda_sample.csv</code>. <strong>17 features</strong> per cell-day:</p>
+  <p>
+    <span class="chip">latitude</span><span class="chip">longitude</span><span class="chip">pr</span><span class="chip">rmax</span><span class="chip">rmin</span><span class="chip">sph</span><span class="chip">srad</span><span class="chip">tmmn</span><span class="chip">tmmx</span><span class="chip">vs</span><span class="chip">bi</span><span class="chip">fm100</span><span class="chip">fm1000</span><span class="chip">erc</span><span class="chip">etr</span><span class="chip">pet</span><span class="chip">vpd</span>
+  </p>
+
+  <!-- ============================ 2 COMBINE ============================ -->
+  <h2 id="combine"><span class="no">2</span>How the sources combine</h2>
+  <ul>
+    <li><strong>One spatial key:</strong> every record — satellite event or weather update — is keyed by
+    <strong>Uber H3 hexagon</strong> (resolution 6, ~3.2 km edge ≈ the 4 km INSAT pixel; regions at res 3, ~60 km).</li>
+    <li><strong>Stream–Table join:</strong> weather lands in the <em>compacted</em> <code>wildfire.weather</code>
+    topic (a materialized KTable); satellite events flow through <code>wildfire.raw</code>. Both keyed and
+    co-partitioned by H3 cell → <code>streams_app</code> does a <strong>shuffle-free left join</strong>: each
+    fire observation is enriched with its cell's latest weather.</li>
+    <li><strong>Training vs serving:</strong> the model learned from labeled gridMET history; at serving time it
+    scores INSAT+MOSDAC events (caveat in §3.4).</li>
+  </ul>
+
+  <!-- ============================ 3 MODEL ============================ -->
+  <h2 id="model"><span class="no">3</span>The model, features, target, metrics</h2>
+
+  <h3>3.1 What model</h3>
+  <p><strong>RandomForestClassifier</strong> (scikit-learn, <strong>150 trees</strong>), trained by
+  <code>train_stream_model.py</code>. Artifacts: <code>artifacts/best_RandomForest.pkl</code> (model),
+  <code>preprocessing_artifacts.pkl</code> (scaler + imputation medians + feature list),
+  <code>stream_model_meta.json</code> (metrics).</p>
+
+  <h3>3.2 Training attributes &amp; target</h3>
+  <ul>
+    <li><strong>Target attribute:</strong> <code>Wildfire</code> — binary (<code>Yes</code>/<code>No</code> → 1/0):
+    did a fire occur at this grid cell on this day.</li>
+    <li><strong>Inputs:</strong> the 17 gridMET features above (climate, fuel moisture, energy release, vapor deficit, wind, location).</li>
+    <li><strong>Split:</strong> 175,000 train / 37,500 test rows.</li>
+  </ul>
+
+  <h3>3.3 Metrics</h3>
+  <div class="tiles">
+    <div class="tile"><div class="v">0.827</div><div class="k">Accuracy</div></div>
+    <div class="tile"><div class="v">0.355</div><div class="k">F1</div></div>
+    <div class="tile"><div class="v hot">0.854</div><div class="k">Recall ★</div></div>
+    <div class="tile"><div class="v">0.224</div><div class="k">Precision</div></div>
+    <div class="tile"><div class="v">0.916</div><div class="k">ROC-AUC</div></div>
+    <div class="tile"><div class="v">0.400</div><div class="k">PR-AUC</div></div>
+  </div>
+  <p>Precision looks low by design: fire days are ~5% of data, and the system is tuned
+  <strong>recall-first</strong> — a missed fire costs far more than a false WATCH. The live 5,000-event
+  pipeline evaluation (<code>evaluation/report.json</code>) confirms the operating point:</p>
+  <div class="tablebox"><table>
+    <tr><th>Live metric (measured)</th><th class="num">Value</th></tr>
+    <tr><td>End-to-end latency (ingest → prediction)</td><td class="num">p50 143 ms · p95 220 ms · p99 241 ms</td></tr>
+    <tr><td>Recall / Precision / F1 vs embedded labels</td><td class="num">0.932 / 0.232 / 0.372</td></tr>
+    <tr><td>ROC-AUC / PR-AUC</td><td class="num">0.943 / 0.483</td></tr>
+    <tr><td>Confusion (n=5000)</td><td class="num">TP 245 · FP 809 · FN 18 · TN 3928</td></tr>
+    <tr><td>Alerts emitted</td><td class="num">WATCH 788 · WARNING 175 · EMERGENCY 52</td></tr>
+  </table></div>
+
+  <div class="notice warn">
+    <div class="n-title">3.4 Honesty note — what actually scores events today</div>
+    <p>The deployed detector loads the gridMET forest (17 feature names), but MOSDAC events carry 15
+    different features. Only <code>latitude</code>/<code>longitude</code> overlap; the rest are filled with
+    <strong>training medians</strong> at scoring time. So the RF probability acts mostly as a
+    <strong>spatial prior</strong>, while the <strong>physical tier rules</strong> (§6) and a logistic
+    fallback risk scorer (<code>z = −4.5 + 0.38·ΔT + 0.04·FWI + 0.05·max(0, T_MIR−300)</code>) do the real
+    detection. No trained <code>risk</code> model exists yet — the detector logs
+    <code>Trained artifacts not found for prefix=risk</code> and falls back automatically. Retraining on
+    MOSDAC features (<code>detector_model.pkl</code> / <code>risk_model.pkl</code>) is the intended fix;
+    the loader picks them up when present.</p>
+  </div>
+
+  <!-- ============================ 4 KAFKA ============================ -->
+  <h2 id="kafka"><span class="no">4</span>Kafka — producers, topics, partitions, jobs</h2>
+  <p>Single-node <strong>KRaft</strong> broker (no ZooKeeper), <code>apache/kafka:3.9.0</code>
+  (<code>localhost:9092</code> host / <code>kafka:29092</code> internal). Topic auto-create is off; all six
+  topics are declared by <code>create_topics.py</code>.</p>
+
+  <h3>4.1 Producer (one, idempotent, three modes)</h3>
+  <div class="tablebox"><table>
+    <tr><th>Mode</th><th>What it streams</th></tr>
+    <tr><td><code>replay</code> <strong>(running now)</strong></td><td>the compiled MOSDAC CSV (9,356 rows) at 50 eps on a 60× synthetic clock</td></tr>
+    <tr><td><code>mosdac</code></td><td>raw MOSDAC KML ingestion, resolving physical temperatures + co-temporal weather</td></tr>
+    <tr><td><code>live</code></td><td>synthetic feed anchored to 10 Indian forest reserves, same FRP/FWI math as training</td></tr>
+  </table></div>
+  <p>Per event it writes <em>two</em> records: observation → <code>wildfire.raw</code>, cell weather →
+  <code>wildfire.weather</code>. Idempotence (<code>enable.idempotence=true</code>, <code>acks=all</code>, lz4)
+  means retries never duplicate.</p>
+
+  <h3>4.2 Topics — what and why</h3>
+  <div class="tablebox"><table>
+    <tr><th>Topic</th><th class="num">Partitions</th><th>Config</th><th>Why it exists</th></tr>
+    <tr><td><code>wildfire.raw</code></td><td class="num">6</td><td>7-day retention</td><td>raw satellite events, key = H3 cell → per-cell ordering, parallel consumption</td></tr>
+    <tr><td><code>wildfire.weather</code></td><td class="num">6</td><td><strong>compacted</strong>, dirty-ratio 0.1</td><td>the KTable — latest weather per cell survives restarts in a small log</td></tr>
+    <tr><td><code>wildfire.features</code></td><td class="num">6</td><td>24 h</td><td>joined + windowed feature vectors (stream-processor output)</td></tr>
+    <tr><td><code>wildfire.predictions</code></td><td class="num">3</td><td>24 h</td><td><strong>every ML output</strong> — per-event detection p/label/tier + per-cell risk assessments</td></tr>
+    <tr><td><code>wildfire.alerts</code></td><td class="num">3</td><td><strong>90 days</strong>, key = H3 region</td><td>tiered alerts with GeoJSON polygons → ES, dashboard, notifier (the alert archive)</td></tr>
+    <tr><td><code>wildfire.dlq</code></td><td class="num">1</td><td>30 days</td><td>dead-letter queue — poison messages never block the stream</td></tr>
+  </table></div>
+  <p>Co-partitioning <code>raw</code> and <code>weather</code> on the same H3 key with equal partition counts
+  is exactly what makes the join shuffle-free.</p>
+
+  <h3>4.3 Stream jobs (one consumer group each)</h3>
+  <div class="tablebox"><table>
+    <tr><th>Service</th><th>Job</th></tr>
+    <tr><td><code>streams_app</code></td><td>validate (schema + India bounds + physical ranges) → DLQ · LRU dedup · <strong>event-time</strong> tumbling windows (60 s per region) + sliding windows (600 s / 60 s hop per cell) · 90 s watermark · feature engineering (rolling <code>r600s_*</code> aggregates, cyclic calendar, dry/sun-glint flags) · KTable join → <code>wildfire.features</code></td></tr>
+    <tr><td><code>detector</code></td><td>consumes <code>features</code> <em>and</em> <code>weather</em> · vectorized batch scoring → <code>predictions</code> · tier rules → <code>alerts</code> · per-cell risk nowcast → <code>predictions</code></td></tr>
+    <tr><td><code>indexer</code></td><td>bulk-indexes alerts into ES (batches ≥ 50), buffers during ES outages, idempotent upsert by <code>alert_id</code></td></tr>
+    <tr><td><code>notifier</code></td><td>dispatches WARNING/EMERGENCY (console + optional webhook)</td></tr>
+    <tr><td><code>api</code></td><td>dashboard :9991 — 3D globe, SSE live feed, <code>/api/stats</code>, Prometheus <code>/metrics</code>, ES search proxy</td></tr>
+  </table></div>
+  <p><strong>Semantics:</strong> at-least-once consumption (commit <em>after</em> processing) + per-stage
+  event-id dedup ≈ effectively exactly-once effects. Deterministic <code>alert_id</code>
+  (<code>cell|tier|event_ts</code>) makes ES writes idempotent upserts.</p>
+
+  <!-- ============================ 5 PREDICTIONS ============================ -->
+  <h2 id="predictions"><span class="no">5</span>Where predictions flow in the stream</h2>
+  <div class="pipe">
+    <div class="pnode"><span class="pn">MOSDAC KML/CSV · Open-Meteo API</span><span class="pd">sources</span></div>
+    <div class="parrow">↓</div>
+    <div class="pnode"><span class="pn">producer</span><span class="pd">idempotent, keyed by H3 cell</span></div>
+    <div class="parrow">↓<span class="lbl">two topics</span></div>
+    <div class="pnode kafka"><span class="pn">wildfire.raw</span><span class="pd">satellite events</span><span class="tag chip">6p</span></div>
+    <div class="pnode kafka"><span class="pn">wildfire.weather</span><span class="pd">KTable, compacted</span><span class="tag chip">6p</span></div>
+    <div class="parrow">↓<span class="lbl">shuffle-free stream–table join</span></div>
+    <div class="pnode"><span class="pn">streams_app</span><span class="pd">validate → DLQ · dedup · windows · features</span></div>
+    <div class="parrow">↓</div>
+    <div class="pnode kafka"><span class="pn">wildfire.features</span><span class="tag chip">6p</span></div>
+    <div class="parrow">↓</div>
+    <div class="pnode"><span class="pn">detector</span><span class="pd">RandomForest scoring + physical tier rules + risk nowcast</span></div>
+    <div class="parrow">↓<span class="lbl">ML outputs live here</span></div>
+    <div class="pnode kafka"><span class="pn">wildfire.predictions</span><span class="pd">p(fire), label, tier · risk_assessment LOW→EXTREME</span><span class="tag chip">3p</span></div>
+    <div class="pnode kafka"><span class="pn">wildfire.alerts</span><span class="pd">WATCH / WARNING / EMERGENCY + GeoJSON</span><span class="tag chip">3p · 90d</span></div>
+    <div class="parrow">↓</div>
+    <div class="pnode"><span class="pn">indexer → Elasticsearch</span><span class="pd">geo-searchable alert archive</span></div>
+    <div class="pnode"><span class="pn">notifier + dashboard :9991</span><span class="pd">dispatch · SSE globe · metrics</span></div>
+  </div>
+
+  <!-- ============================ 6 ALERTS ============================ -->
+  <h2 id="alerts"><span class="no">6</span>How alerts are triggered</h2>
+  <p>Model probability alone never raises an alert — it must clear <strong>physical tier rules</strong>
+  combining radiometry and weather. Sun-glint correction: under zenith sun (<code>solar_elev &gt; 55°</code>),
+  ΔT must be 1.5 K stronger.</p>
+  <div class="tiers">
+    <div class="tier t3">
+      <h4>EMERGENCY — high-intensity or fast-spreading fire</h4>
+      <div class="rule">p ≥ 0.80 AND ( ΔT_eff ≥ 11.2 K &amp; wind ≥ 2.8 m/s · OR FRP ≥ 162 MW · OR T_MIR ≥ 315.5 K · OR ΔT_eff ≥ 10 &amp; surge ≥ 2.5 &amp; FWI ≥ 32 )</div>
+    </div>
+    <div class="tier t2">
+      <h4>WARNING — confirmed contextual fire anomaly</h4>
+      <div class="rule">p ≥ 0.65 &amp; ΔT_eff ≥ 9 &amp; T_MIR ≥ 309 · OR p ≥ 0.75 &amp; FRP ≥ 125 · OR p ≥ 0.70 &amp; rolling-max ΔT ≥ 9.5 &amp; FWI ≥ 30 · OR p ≥ 0.65 &amp; night &amp; ΔT ≥ 7.5</div>
+    </div>
+    <div class="tier t1">
+      <h4>WATCH — developing anomaly / elevated fire-weather risk</h4>
+      <div class="rule">p ≥ 0.42 &amp; ( ΔT_eff ≥ 5.8 OR FWI ≥ 25 ) · OR ΔT_eff ≥ 7.5 &amp; T_MIR ≥ 303 &amp; FWI ≥ 22</div>
+    </div>
+  </div>
+  <p>Each alert carries a deterministic <code>alert_id</code>, tier, H3 cell + region, lat/lon, a GeoJSON
+  polygon of the cell boundary, probabilities, model names, radiometry + weather blocks, and a readable
+  message. Dedup: max one alert per (cell, tier) per 60 s. Fan-out: Elasticsearch, dashboard SSE, notifier
+  (WARNING/EMERGENCY dispatch).</p>
+
+  <!-- ============================ 7 ES ============================ -->
+  <h2 id="es"><span class="no">7</span>Why Elasticsearch</h2>
+  <ul>
+    <li><strong>Geo search</strong> — <code>location</code> as <code>geo_point</code>, cell <code>geometry</code>
+    as <code>geo_shape</code>: "every alert inside this polygon / near this coordinate" is a native query.</li>
+    <li><strong>Searchable archive</strong> — full-text + structured search over 90 days of alerts
+    (<code>/api/search?q=emergency</code> on the dashboard proxies ES).</li>
+    <li><strong>Kibana-ready</strong> — <code>--profile kibana</code> brings up :5601 for ops dashboards.</li>
+    <li><strong>Idempotent upserts</strong> by <code>alert_id</code> — at-least-once indexing can never duplicate.</li>
+    <li><strong>Separation of concerns</strong> — Kafka is the streaming backbone; ES is the query tier.</li>
+  </ul>
+
+  <!-- ============================ 8 MLOPS ============================ -->
+  <h2 id="mlops"><span class="no">8</span>The MLOps stack (batch backend)</h2>
+  <div class="tablebox"><table>
+    <tr><th>Tool</th><th>Role</th></tr>
+    <tr><td>FastAPI + uvicorn</td><td>inference server :8000 (<code>/predict</code>, <code>/model</code>, monitoring endpoints), Dockerized, K8s manifests in <code>k8s/</code></td></tr>
+    <tr><td>React (Vite) + nginx</td><td>frontend :8001 — prediction UI + drift dashboard; nginx proxies <code>/api</code> → inference</td></tr>
+    <tr><td>Evidently</td><td><code>monitoring/drift_runner.py</code> — DataDriftPreset on live prediction logs vs reference → <code>status.json</code> (<code>share_of_drifted_columns</code> ≥ threshold ⇒ <code>trigger_retrain</code>)</td></tr>
+    <tr><td>Prefect</td><td><code>prefect/flows/retrain_flow.py</code> — drift-triggered (or <code>--force</code>) retraining</td></tr>
+    <tr><td>MLflow</td><td>experiment tracking + model registry (<code>train.py</code> logs runs; <code>mlruns/</code>)</td></tr>
+    <tr><td>DVC</td><td>data + artifact versioning (<code>dvc.yaml</code>) so retraining versions data with the model</td></tr>
+    <tr><td>Docker / K8s</td><td>inference image, compose for dev, K8s deployment + service + port-forward</td></tr>
+    <tr><td>Prometheus</td><td>pipeline <code>/metrics</code> on :9991</td></tr>
+  </table></div>
+  <p>The drift loop: inference logs live traffic → <code>current.parquet</code> → Evidently vs reference →
+  <code>status.json</code> → Prefect retrain → MLflow registry + DVC version → redeploy.</p>
+
+  <!-- ============================ 9 GEO ============================ -->
+  <h2 id="geo"><span class="no">9</span>India vs other countries</h2>
+  <div class="tablebox"><table>
+    <tr><th>Generation</th><th>Geography</th><th>Where locations come from</th></tr>
+    <tr><td><strong>Deployed (MOSDAC)</strong></td><td>India only — validation bounds lat 5–39, lon 65–100</td><td>real MOSDAC hotspots; 10 forest reserves for live simulation (Gadchiroli/Tadoba, Satpura, Pench, Simlipal, Saranda, Dudhwa Terai, Dibru-Saikhowa, Bandipur, Nallamala, Bastar) + 10 named forest-region boxes + 7 land boxes for background sampling</td></tr>
+    <tr><td><strong>Original (gridMET)</strong></td><td>western US</td><td>7 fire-prone region centers (Idaho, Montana, Oregon, N/S California, Arizona, Washington)</td></tr>
+  </table></div>
+  <p>No other-country data exists in the deployed system; US data lives only in the original generation.</p>
+
+  <footer>
+    Verified against the live system on 2026-10-31 — 566k+ predictions, 44k+ alerts indexed.
+    Companion file: <code>ARCHITECTURE.md</code> · Setup: <code>SETUP.md</code>
+  </footer>
+</main>
+</div>
+</body>
+</html>

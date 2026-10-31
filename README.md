@@ -1,4 +1,4 @@
-# 🔥 Wildfire Risk — Real-Time Kafka Streaming Pipeline + FastAPI Backend
+# 🔥 Wildfire Risk — Real-Time Kafka Streaming Pipeline + MLOps Backend
 
 An end-to-end wildfire risk system with two integrated parts:
 
@@ -6,7 +6,7 @@ An end-to-end wildfire risk system with two integrated parts:
    Streams (filter + window + feature engineering) → ML Fire Detection → Fire Prediction →
    Alert Topic → Elasticsearch → **3D satellite dashboard on http://localhost:9991** /
    Emergency Alerts → Performance Evaluation.
-2. **Batch backend** — training, FastAPI inference, drift monitoring, Prefect
+2. **Batch MLOps backend** — training, FastAPI inference, drift monitoring, Prefect
    retraining, DVC versioning (execution guide in *Part B* below).
 
 ---
@@ -245,7 +245,7 @@ pytest tests/test_streams.py -v     # 13 tests: validation, sentinel handling,
 
 ---
 
-# Part B — Batch FastAPI Backend (Full Execution Guide)
+# Part B — Batch MLOps Backend (Full Execution Guide)
 
 > ⚠️ This part documents **everything required to make the batch system work**, even if some
 > steps are not ideal for production. **Follow the order exactly. Skipping steps will break
@@ -348,3 +348,36 @@ python prefect/flows/retrain_flow.py
 | `current.parquet` missing | FastAPI not running |
 | Prefect stuck | Windows + ephemeral server |
 | No retrain | `trigger_retrain=false` |
+
+---
+
+# Part C — Agentic AI Layer (`agents/`)
+
+A multi-agent system that reasons and acts on top of the streaming pipeline.
+**Hub-and-spoke**: a Coordinator plans and delegates; workers never call each other.
+
+| Agent | Role | Tools (allowlisted) |
+|---|---|---|
+| `ChatAgent` | User-facing Q&A (CLI/REPL) | via coordinator |
+| `CoordinatorAgent` | PLAN → DELEGATE → VERIFY → SYNTHESIZE; approval flag | all (via workers) |
+| `AlertVerifierAgent` | Verifies fire claims against ES alert/prediction evidence | `search_alerts`, `recent_alerts`, `latest_predictions` |
+| `FireHistoryAgent` | "Has this location burned before?" — geo query + recurrence score | `fire_history`, `search_alerts` |
+| `SituationAgent` | Current conditions + pipeline health | `pipeline_stats`, `latest_predictions`, `recent_alerts` |
+| `DispatcherAgent` | Drafts notifications; **sending is gated** behind approval | `draft_dispatch`, `send_dispatch` |
+| `Critic` | Checks every claim in the answer traces to tool evidence | — |
+
+**Guardrails:** tool allowlist (no `eval` of model output), human-approval gate on the
+only side-effecting tool, critic verification pass, bounded ReAct loops (4 rounds),
+graceful degradation when ES/API is down, and full trace logging to
+`logs/agent_traces.jsonl`.
+
+```bash
+export GROQ_API_KEY=...                      # Groq (OpenAI-compatible) backend
+python -m agents.chat "has 24.07, 80.90 burned before?"   # one-shot
+python -m agents.chat                                     # interactive REPL
+python -m agents.demo                                     # 3 scripted scenarios
+```
+
+Models: coordinator/critic on `openai/gpt-oss-120b`, workers on `openai/gpt-oss-20b`
+(two separate per-model rate-limit buckets; override with `GROQ_MODEL` /
+`GROQ_WORKER_MODEL`). The API key is read from the environment only — never committed.
