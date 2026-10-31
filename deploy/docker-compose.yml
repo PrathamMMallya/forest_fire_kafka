@@ -11,7 +11,9 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      # CONTROLLER must be advertised too: KafkaConfig falls back to the 0.0.0.0
+      # bind address from KAFKA_LISTENERS otherwise and storage format fails.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092,CONTROLLER://kafka:29093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
@@ -21,6 +23,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    restart: unless-stopped
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
       interval: 10s
@@ -36,7 +41,17 @@ services:
     environment:
       discovery.type: single-node
       xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+      # 512m heap: 1g got the container OOM-killed twice under VM memory pressure
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      # CORS so browser tools (Elasticvue etc.) can reach the cluster
+      http.cors.enabled: "true"
+      # quotes must survive into elasticsearch.yml: bare * is a YAML alias token
+      http.cors.allow-origin: "'*'"
+      http.cors.allow-methods: "OPTIONS,HEAD,GET,POST,PUT,DELETE"
+      http.cors.allow-headers: "X-Requested-With,Content-Type,Content-Length,Authorization"
+    restart: unless-stopped
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
@@ -136,3 +151,8 @@ services:
     depends_on:
       kafka: { condition: service_healthy }
     restart: unless-stopped
+
+# Kafka/ES data survives container recreation (topics, consumer offsets, alerts index).
+volumes:
+  kafka-data:
+  es-data:

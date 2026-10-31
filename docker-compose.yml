@@ -13,7 +13,10 @@ services:
     build:
       context: ./frontend/react-app
       args:
-        VITE_API_URL: "http://inference:8000"
+        # Baked into the browser JS: must be a browser-reachable path.
+        # "http://inference:8000" only resolves inside the compose network and
+        # breaks in the browser; nginx proxies /api -> inference:8000 instead.
+        VITE_API_URL: "/api"
     image: wildfire-frontend:latest
     ports:
       - "8001:80"
